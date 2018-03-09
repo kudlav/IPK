@@ -1,12 +1,18 @@
-/*
- * Error codes:
- * 0 = ok
- * 1 = error when parsing arguments
- * 2 = internal error
+/**
+ * Project: IPK - client/server
+ * Author: Vladan Kudlac
+ * Created: 5.3.2018
  */
 
+/* Error codes: */
+#define EXIT_ARG 1 // error when parsing arguments
+#define EXIT_NET 2 // network error
+#define EXIT_IOE 3 // I/O error
+#define EXIT_SYS 4 // system error (fork)
+
 /* Requirements */
-#include <iostream>
+#include <iostream> // IO operations
+#include <fstream> // files IO
 #include <cstring>
 #include <unistd.h>
 #include <sys/types.h> // for BSD systems
@@ -28,13 +34,13 @@ void printHelp()
 		 << "  -p <port>\n"
 		 << "      cislo portu, na kterem server nasloucha\n"
 	;
-	exit(1);
+	exit(EXIT_ARG);
 }
 
 int main(int argc, char *argv[])
 {
 	if (argc == 1) { // Called without parameters
-		printHelp(); // exit(1)
+		printHelp(); // exit(EXIT_ARG);
 	}
 
 	uint16_t port;
@@ -46,28 +52,28 @@ int main(int argc, char *argv[])
 				char *endptr;
 				long port_raw = strtol(optarg, &endptr, 10);
 				if (*endptr != '\0' || port_raw < 0 || port_raw > 65535) {
-					cerr << "Hodnota parametru -p musi byt cele kladne cislo v intervalu <0;65535>\n";
-					printHelp(); // exit(1)
+					cerr << "CHYBA: hdnota parametru -p musi byt cele kladne cislo v intervalu <0;65535>\n";
+					printHelp(); // exit(EXIT_ARG);
 				}
 				port = (uint16_t) port_raw;
 				} break;
 			case '?':
 				if (optopt == 'p') {
-					cerr << "Chybi hodnota u argumentu -p\n";
+					cerr << "CHYBA: chybi hodnota u argumentu -p\n";
 				}
 				else {
-					cerr << "Neznamy parametr -" << (char) optopt << '\n';
+					cerr << "CHYBA: neznamy parametr -" << (char) optopt << '\n';
 				}
 			default:
-				printHelp(); // exit(1)
+				printHelp(); // exit(EXIT_ARG);
 		}
 	}
 
 	/* Create socket */
 	int server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
-	if (!server_sock) {
+	if (server_sock < 0) {
 		cerr << "CHYBA: nelze vytvorit socket\n";
-		exit(2);
+		exit(EXIT_NET);
 	}
 
 	struct sockaddr_in server_addr;
@@ -77,16 +83,16 @@ int main(int argc, char *argv[])
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(port); // convert to uint16_t
-
-	if (!bind(server_sock, (struct sockaddr *) &server_addr, sizeof(server_addr))) {
+	int result = bind(server_sock, (struct sockaddr *) &server_addr, sizeof(server_addr));
+	if (result < 0) {
 		cerr << "CHYBA: nelze priradit socket k sitovemu rozhranni\n";
-		return 2;
+		exit(EXIT_NET);
 	}
 
 	/* Listen for connections on a socket */
-	if (!listen(server_sock , 1)) { // MAX 1 WAITTING CLIENT
+	if (listen(server_sock , 1) < 0) { // MAX 1 WAITTING CLIENT
 		cerr << "CHYBA: socket se nepodarilo nastavit pro prijmani prichozich pozadavku\n";
-		return 2;
+		exit(EXIT_NET);
 	}
 
 	/* Handle waitting connections from a client */
@@ -95,11 +101,48 @@ int main(int argc, char *argv[])
 	while (true) {
 		/* Accept connection */
 		int client_sock = accept(server_sock, (struct sockaddr*) &client_addr, (socklen_t*) &client_addr_length);
-		if (!client_sock) {
+		if (client_sock < 0) {
 			cerr << "CHYBA: prichozi pozadavek nelze prijmout\n";
-			return 2;
+			continue;
 		}
-		/* Close connection */
-		close(client_sock);
+
+		/* CONNECTION HANDLING */
+
+		pid_t pid = fork();
+		if (pid < 0) { // FORK: ERROR
+			cerr << "CHYBA: nepodarilo se vytvorit proces pro zpracovani pozadavku\n";
+			exit(EXIT_SYS);
+		}
+		else if (pid == 0) { // FORK: CHILD (processing)
+			/* Child - close parent socket (just for child process) */
+			close(server_sock);
+
+			pid = getpid();
+			cout << "New connection, PID:" << pid << '\n';
+
+			// ### HERE WILL BE THE TRANSFER ### //
+			string data;
+			data.resize(1024);
+			while (int read_size = read(client_sock, &data[0], data.size()) > 0) {
+				cout << data;
+				cout << read_size << endl;
+			}
+
+			read_size = read(client_sock, &data[0], data.size());
+			cout << read_size << endl;
+
+			/* Child - close connection */
+			close(client_sock);
+
+			cout << "End connection, PID:" << pid << '\n';
+
+			exit(EXIT_SUCCESS);
+		}
+		else { // FORK: MASTER (control)
+			/* Master - close connection */
+			close(client_sock);
+		}
 	}
+
+		/* END OF CONNECTION HANDLING */
 }
