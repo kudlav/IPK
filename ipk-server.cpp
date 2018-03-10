@@ -2,6 +2,7 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
+ * Version: 0.1
  */
 
 /* Error codes: */
@@ -9,14 +10,14 @@
 #define EXIT_NET 2 // network error
 #define EXIT_IOE 3 // I/O error
 #define EXIT_SYS 4 // system error (fork)
+#define EXIT_COM 5 // communication error (invalid request)
 
 /* Requirements */
 #include <iostream> // IO operations
 #include <fstream> // files IO
-#include <cstring>
 #include <unistd.h>
+#include <cstring> // memset, memcpy
 #include <sys/types.h> // for BSD systems
-
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -95,6 +96,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_NET);
 	}
 
+	cout << "Sever bezi.\n";
+
 	/* Handle waitting connections from a client */
 	struct sockaddr_in client_addr;
 	int client_addr_length = sizeof(client_addr);
@@ -120,16 +123,65 @@ int main(int argc, char *argv[])
 			pid = getpid();
 			cout << "New connection, PID:" << pid << '\n';
 
-			// ### HERE WILL BE THE TRANSFER ### //
-			string data;
+			/* Wait for client request */
+			string path_out = "";
+			string path_in = "";
+			string data = "";
 			data.resize(1024);
-			while (int read_size = read(client_sock, &data[0], data.size()) > 0) {
-				cout << data;
-				cout << read_size << endl;
+			recv(client_sock, &data[0], data.size(), 0);
+			if (data.find("RECV") != string::npos) { // Download file from server
+				path_in = data.substr(5);
+			}
+			else if (data.find("SEND") != string::npos) { // Upload file to server
+				path_out = data.substr(5);
+			}
+			else {
+				data = "400 BAD_REQUEST";
+				write(client_sock, data.c_str(), data.size());
+				cerr << "CHYBA: klient zaslal neplatny pozadavek: " << data << '\n';
+				exit(EXIT_COM);
 			}
 
-			read_size = read(client_sock, &data[0], data.size());
-			cout << read_size << endl;
+			/* Open file */
+			fstream file;
+			if (!path_out.empty()) {
+				file.open(path_out.c_str(), ios::out | ios::trunc | ios::binary);
+			}
+			else {
+				file.open(path_in.c_str(), ios::in | ios::binary);
+			}
+			if (!file.is_open()) {
+				data = "403 FILE_ERROR";
+				write(client_sock, data.c_str(), data.size());
+				cerr << "CHYBA: soubor nelze otevrit\n";
+				exit(EXIT_IOE);
+			}
+
+			data = "200 OK";
+			write(client_sock, data.c_str(), data.size());
+
+			/* File transfer */
+			data.clear();
+			data.resize(1024);
+			if (!path_out.empty()) {
+				while (read(client_sock, &data[0], data.size()) > 0) {
+					file << data;
+					data.clear();
+					data.resize(1024);
+				}
+			}
+			else {
+				do {
+					file.read(&data[0], data.size());
+					write(client_sock, data.c_str(), data.size());
+					data.clear();
+					data.resize(1024);
+				}
+				while (!file.eof());
+			}
+
+			/* Close file */
+			file.close();
 
 			/* Child - close connection */
 			close(client_sock);

@@ -2,6 +2,7 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
+ * Version: 0.1
  */
 
 /* Error codes: */
@@ -9,6 +10,7 @@
 #define EXIT_NET 2 // network error
 #define EXIT_IOE 3 // I/O error
 #define EXIT_SYS 4 // system error (fork)
+#define EXIT_COM 5 // communication error (error response)
 
 /* Requirements */
 #include <iostream> // IO operations
@@ -51,8 +53,8 @@ int main(int argc, char *argv[])
 	uint16_t port;
 	bool port_set = false;
 	string host = "";
-	string read = "";
-	string save = "";
+	string path_in = "";
+	string path_out = "";
 
 	int opt;
 	while ((opt = getopt(argc, argv, "h:p:r:w:")) != -1) {
@@ -71,15 +73,15 @@ int main(int argc, char *argv[])
 				port_set = true;
 				} break;
 			case 'r':
-				read = optarg;
-				if (!save.empty()) {
+				path_out = optarg;
+				if (!path_in.empty()) {
 					cerr << "CHYBA: parametr -r nelze pouzit zaroven s parametrem -w\n";
 					printHelp(); // exit(EXIT_ARG)
 				}
 				break;
 			case 'w':
-				save = optarg;
-				if (!read.empty()) {
+				path_in = optarg;
+				if (!path_out.empty()) {
 					cerr << "CHYBA: parametr -w nelze pouzit zaroven s parametrem -r\n";
 					printHelp(); // exit(EXIT_ARG)
 				}
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (host.empty() || !port_set || (save.empty() && read.empty())) {
+	if (host.empty() || !port_set || (path_out.empty() && path_in.empty())) {
 		cerr << "CHYBA: chyby povinne parametry\n";
 		printHelp(); // exit(EXIT_ARG)
 	}
@@ -129,12 +131,12 @@ int main(int argc, char *argv[])
 	}
 
 	/* Open file */
-	ofstream file;
-	if (!save.empty()) {
-		file.open(save.c_str(), ios::out | ios::trunc | ios::binary);
+	fstream file;
+	if (!path_out.empty()) {
+		file.open(path_out.c_str(), ios::out | ios::trunc | ios::binary);
 	}
 	else {
-		file.open(read.c_str(), ios::out | ios::trunc | ios::binary);
+		file.open(path_in.c_str(), ios::in | ios::binary);
 	}
 
 	if (!file.is_open()) {
@@ -142,10 +144,44 @@ int main(int argc, char *argv[])
 		exit(EXIT_IOE);
 	}
 
-	// ### HERE WILL BE THE TRANSFER ### //
+	/* Read/write request to the server */
 	string data;
-	data = "Hello, it's me, pid:" + to_string(getpid());
+	if (!path_out.empty()) {
+		data = "RECV " + path_out;
+	}
+	else {
+		data = "SEND " + path_in;
+	}
 	write(client_sock, data.c_str(), data.size());
+
+	/* Confirmation from server */
+	data.clear();
+	data.resize(1024);
+	recv(client_sock, &data[0], data.size(), 0);
+	if (data.find("200 OK") == string::npos) {
+		cerr << "CHYBA: server odpovedel chybou: " << data;
+		exit(EXIT_COM);
+	}
+
+	/* File transfer */
+	data.clear();
+	data.resize(1024);
+	if (!path_out.empty()) {
+		while (read(client_sock, &data[0], data.size()) > 0) {
+			file << data;
+			data.clear();
+			data.resize(1024);
+		}
+	}
+	else {
+		do {
+			file.read(&data[0], data.size());
+			write(client_sock, data.c_str(), data.size());
+			data.clear();
+			data.resize(1024);
+		}
+		while (!file.eof());
+	}
 
 	/* Close file */
 	file.close();
