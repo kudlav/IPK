@@ -15,15 +15,15 @@
 /* Requirements */
 #include <iostream> // IO operations
 #include <fstream> // files IO
-#include <unistd.h>
+#include <unistd.h> // fork, getpid, getopt
 #include <cstring> // memset, memcpy
 #include <sys/types.h> // for BSD systems
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include <sys/socket.h> // accept, bind, recv
+#include <netinet/in.h> // INADDR_ANY, htons
+#include <netdb.h> // struct hostent
 
-#ifdef _WIN32
-#include <afxres.h> // TODO WIN only!!
-#endif
+//#ifdef _WIN32
+//#include <afxres.h>
+//#endif
 
 using namespace std;

@@ -13,15 +13,22 @@
 void printHelp()
 {
 	cerr << "Pouziti:\n"
-		 << "./ipk-client -h host -p port [-r|-w] soubor\n"
-		 << "  -h <host>\n"
-		 << "      (IP adresa nebo fully-qualified DNS name) identifikace serveru jakozto koncoveho bodu komunikace klienta\n"
-		 << "  -p <port>\n"
-		 << "      cilove cislo portu\n"
-		 << "  -r <soubor>\n"
-		 << "      klient stahne soubor ze serveru\n"
-		 << "  -w <soubor>\n"
-		 << "      klient nahraje soubor na server\n"
+			"./ipk-client -h host -p port [-r|-w] soubor\n"
+			"  -h <host>\n"
+			"      (IP adresa nebo fully-qualified DNS name) identifikace serveru jakozto koncoveho bodu komunikace klienta\n"
+			"  -p <port>\n"
+			"      cilove cislo portu\n"
+			"  -r <soubor>\n"
+			"      klient stahne soubor ze serveru\n"
+			"  -w <soubor>\n"
+			"      klient nahraje soubor na server\n"
+			"\n"
+			"Navratove kody:\n"
+			"  0    ok\n"
+			"  1    chyba pri zpracovani argumentu\n"
+			"  2    chyba sitoveho rozhranni (např: nelze vytvorit socket, priradit port, vytvorit spojeni)\n"
+			"  3    chyba prace se soubory\n"
+			"  5    chyba komunikace (server odpovedel chybou)"
 	;
 	exit(EXIT_ARG);
 }
@@ -113,7 +120,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Create socket */
-	int client_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
+	int client_sock = socket(AF_INET, SOCK_STREAM, 0); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
 	if (client_sock < 0) {
 		cerr << "CHYBA: nelze vytvorit socket\n";
 		exit(EXIT_NET);

@@ -13,9 +13,17 @@
 void printHelp()
 {
 	cerr << "Pouziti:\n"
-		 << "./ipk-server -p <port>\n"
-		 << "  -p <port>\n"
-		 << "      cislo portu, na kterem server nasloucha\n"
+			"./ipk-server -p <port>\n"
+			"  -p <port>\n"
+			"      cislo portu, na kterem server nasloucha\n"
+			"\n"
+			"Navratove kody:\n"
+			"  0    ok\n"
+			"  1    chyba pri zpracovani argumentu\n"
+			"  2    chyba sitoveho rozhranni (např: nelze vytvorit socket, priradit port, vytvorit spojeni)\n"
+			"  3    chyba prace se soubory\n"
+			"  4    systemova chyba (selhal prikaz fork)\n"
+			"  5    chyba komunikace (klient zaslal neplatny pozadavek)"
 	;
 	exit(EXIT_ARG);
 }
@@ -70,7 +78,7 @@ int main(int argc, char *argv[])
 	parseArguments(argc, argv, &port);
 
 	/* Create socket */
-	int server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
+	int server_sock = socket(AF_INET, SOCK_STREAM, 0); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
 	if (server_sock < 0) {
 		cerr << "CHYBA: nelze vytvorit socket\n";
 		exit(EXIT_NET);
@@ -80,7 +88,7 @@ int main(int argc, char *argv[])
 	struct sockaddr_in server_addr;
 	memset((char *) &server_addr, 0, sizeof(server_addr)); // Null undefined values
 
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(port); // convert to uint16_t
 	int result = bind(server_sock, (struct sockaddr *) &server_addr, sizeof(server_addr));
