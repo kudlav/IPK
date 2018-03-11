@@ -164,10 +164,14 @@ int main(int argc, char *argv[])
 	}
 
 	/* File transfer */
+	int loaded;
 	data.clear();
 	data.resize(1024);
 	if (!path_out.empty()) {
-		while (read(client_sock, &data[0], data.size()) > 0) {
+		while ((loaded = read(client_sock, &data[0], data.size())) > 0) {
+			if (loaded < 1024) {
+				data.resize((unsigned int) loaded);
+			}
 			file << data;
 			data.clear();
 			data.resize(1024);
@@ -176,6 +180,9 @@ int main(int argc, char *argv[])
 	else {
 		do {
 			file.read(&data[0], data.size());
+			if ((loaded = file.gcount()) < 1024) {
+				data.resize((unsigned int) loaded);
+			}
 			write(client_sock, data.c_str(), data.size());
 			data.clear();
 			data.resize(1024);

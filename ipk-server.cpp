@@ -136,9 +136,9 @@ int main(int argc, char *argv[])
 				path_out = data.substr(5);
 			}
 			else {
+				cerr << "CHYBA: klient zaslal neplatny pozadavek: " << data << '\n';
 				data = "400 BAD_REQUEST";
 				write(client_sock, data.c_str(), data.size());
-				cerr << "CHYBA: klient zaslal neplatny pozadavek: " << data << '\n';
 				exit(EXIT_COM);
 			}
 
@@ -161,10 +161,14 @@ int main(int argc, char *argv[])
 			write(client_sock, data.c_str(), data.size());
 
 			/* File transfer */
+			int loaded;
 			data.clear();
 			data.resize(1024);
 			if (!path_out.empty()) {
-				while (read(client_sock, &data[0], data.size()) > 0) {
+				while ((loaded = read(client_sock, &data[0], data.size())) > 0) {
+					if (loaded < 1024) {
+						data.resize((unsigned int) loaded);
+					}
 					file << data;
 					data.clear();
 					data.resize(1024);
@@ -173,6 +177,9 @@ int main(int argc, char *argv[])
 			else {
 				do {
 					file.read(&data[0], data.size());
+					if ((loaded = file.gcount()) < 1024) {
+						data.resize((unsigned int) loaded);
+					}
 					write(client_sock, data.c_str(), data.size());
 					data.clear();
 					data.resize(1024);
