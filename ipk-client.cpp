@@ -2,32 +2,14 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
- * Version: 0.1
+ * Version: 0.2
  */
 
-/* Error codes: */
-#define EXIT_ARG 1 // error when parsing arguments
-#define EXIT_NET 2 // network error
-#define EXIT_IOE 3 // I/O error
-#define EXIT_SYS 4 // system error (fork)
-#define EXIT_COM 5 // communication error (error response)
+#include "ipk-shared.cpp"
 
-/* Requirements */
-#include <iostream> // IO operations
-#include <fstream> // files IO
-#include <unistd.h>
-#include <cstring> // memset, memcpy
-#include <sys/types.h> // for BSD systems
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-
-#ifdef _WIN32
-#include <afxres.h> // TODO WIN only!!
-#endif
-
-using namespace std;
-
+/**
+ * Print usage of this program and exit with code EXIT_ARG (error when parsing arguments).
+ */
 void printHelp()
 {
 	cerr << "Pouziti:\n"
@@ -44,23 +26,26 @@ void printHelp()
 	exit(EXIT_ARG);
 }
 
-int main(int argc, char *argv[])
-{
+/**
+ * Parse arguments from CLI. If an error occurs inside function, program ends with code EXIT_ARG
+ *
+ * @param argc Number arguments from CLI
+ * @param argv Array with CLI arguments
+ * @param port Pointer where port number will be stored
+ * @param host Pointer where host string will be stored
+ * @param path_in Pointer where path of input file will be stored
+ * @param path_out Pointer where path of output file will be stored
+ */
+void parseArguments(int argc, char *argv[], uint16_t* port, string* host, string* path_in, string* path_out) {
 	if (argc == 1) { // Called without parameters
 		printHelp(); // exit(EXIT_ARG)
 	}
-
-	uint16_t port;
-	bool port_set = false;
-	string host = "";
-	string path_in = "";
-	string path_out = "";
-
 	int opt;
+	bool port_set = false;
 	while ((opt = getopt(argc, argv, "h:p:r:w:")) != -1) {
 		switch (opt) {
 			case 'h':
-				host = optarg;
+				*host = optarg;
 				break;
 			case 'p': {
 				char *endptr;
@@ -69,19 +54,19 @@ int main(int argc, char *argv[])
 					cerr << "CHYBA: hodnota parametru -p musi byt cele kladne cislo v intervalu <0;65535>\n";
 					printHelp(); // exit(EXIT_ARG)
 				}
-				port = (uint16_t) port_raw;
+				*port = (uint16_t) port_raw;
 				port_set = true;
-				} break;
+			} break;
 			case 'r':
-				path_out = optarg;
-				if (!path_in.empty()) {
+				(*path_out) = optarg;
+				if (!(*path_in).empty()) {
 					cerr << "CHYBA: parametr -r nelze pouzit zaroven s parametrem -w\n";
 					printHelp(); // exit(EXIT_ARG)
 				}
 				break;
 			case 'w':
-				path_in = optarg;
-				if (!path_out.empty()) {
+				(*path_in) = optarg;
+				if (!(*path_out).empty()) {
 					cerr << "CHYBA: parametr -w nelze pouzit zaroven s parametrem -r\n";
 					printHelp(); // exit(EXIT_ARG)
 				}
@@ -98,14 +83,31 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (host.empty() || !port_set || (path_out.empty() && path_in.empty())) {
+	if ((*host).empty() || !port_set || ((*path_out).empty() && (*path_in).empty())) {
 		cerr << "CHYBA: chyby povinne parametry\n";
 		printHelp(); // exit(EXIT_ARG)
 	}
+}
+
+/**
+ * Main function of ipk-client.
+ *
+ * @param argc Number of CLI arguments
+ * @param argv Array with CLI arguments
+ * @return See return codes above
+ */
+int main(int argc, char *argv[])
+{
+	/* Parse arguments */
+	uint16_t port;
+	string host = "";
+	string path_in = "";
+	string path_out = "";
+	parseArguments(argc, argv, &port, &host, &path_in, &path_out);
 
 	/* DNS lookup for host address */
 	struct hostent *server = gethostbyname(host.c_str());
-	if (server == NULL) {
+	if (server == nullptr) {
 		cerr << "CHYBA: adresa serveru nenalezena\n";
 		exit(EXIT_NET);
 	}

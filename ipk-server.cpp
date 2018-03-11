@@ -2,32 +2,14 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
- * Version: 0.1
+ * Version: 0.2
  */
 
-/* Error codes: */
-#define EXIT_ARG 1 // error when parsing arguments
-#define EXIT_NET 2 // network error
-#define EXIT_IOE 3 // I/O error
-#define EXIT_SYS 4 // system error (fork)
-#define EXIT_COM 5 // communication error (invalid request)
+#include "ipk-shared.cpp"
 
-/* Requirements */
-#include <iostream> // IO operations
-#include <fstream> // files IO
-#include <unistd.h>
-#include <cstring> // memset, memcpy
-#include <sys/types.h> // for BSD systems
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-
-#ifdef _WIN32
-#include <afxres.h> // TODO WIN only!!
-#endif
-
-using namespace std;
-
+/**
+ * Print usage of this program and exit with code EXIT_ARG (error when parsing arguments).
+ */
 void printHelp()
 {
 	cerr << "Pouziti:\n"
@@ -38,14 +20,17 @@ void printHelp()
 	exit(EXIT_ARG);
 }
 
-int main(int argc, char *argv[])
-{
+/**
+ * Parse arguments from CLI. If an error occurs inside function, program ends with code EXIT_ARG
+ *
+ * @param argc Number arguments from CLI
+ * @param argv Array with CLI arguments
+ * @param port Pointer where port number will be stored
+ */
+void parseArguments(int argc, char *argv[], uint16_t* port) {
 	if (argc == 1) { // Called without parameters
 		printHelp(); // exit(EXIT_ARG);
 	}
-
-	uint16_t port;
-
 	int opt;
 	while ((opt = getopt(argc, argv, "p:")) != -1) {
 		switch (opt) {
@@ -56,8 +41,8 @@ int main(int argc, char *argv[])
 					cerr << "CHYBA: hdnota parametru -p musi byt cele kladne cislo v intervalu <0;65535>\n";
 					printHelp(); // exit(EXIT_ARG);
 				}
-				port = (uint16_t) port_raw;
-				} break;
+				*port = (uint16_t) port_raw;
+			} break;
 			case '?':
 				if (optopt == 'p') {
 					cerr << "CHYBA: chybi hodnota u argumentu -p\n";
@@ -69,6 +54,20 @@ int main(int argc, char *argv[])
 				printHelp(); // exit(EXIT_ARG);
 		}
 	}
+}
+
+/**
+ * Main function of ipk-server.
+ *
+ * @param argc Number of CLI arguments
+ * @param argv Array with CLI arguments
+ * @return See return codes above
+ */
+int main(int argc, char *argv[])
+{
+	/* Parse arguments */
+	uint16_t port;
+	parseArguments(argc, argv, &port);
 
 	/* Create socket */
 	int server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // AF_INET = IPv4, SOCK_STREAM = sequenced, reliable
@@ -77,10 +76,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_NET);
 	}
 
+	/* Bind socket to all interfaces */
 	struct sockaddr_in server_addr;
 	memset((char *) &server_addr, 0, sizeof(server_addr)); // Null undefined values
 
-	/* Bind socket to all interfaces */
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(port); // convert to uint16_t
