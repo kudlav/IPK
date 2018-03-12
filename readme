@@ -51,5 +51,8 @@ Při použití čísla portu menší než 1024 mohou být pro spuštění vyžad
 * 4 = systémová chyba (selhal příkaz fork) - pouze u ipk-server
 * 5 = chyba komunikace (klient zaslal neplatný požadavek)
 
+## Známé chyby
+Cílový i zdrojový adresář musí existovat. V případě, že neexistuje, končí program chybou, program adresáře nevytváří.
+
 ## Autoři
 * **Vladan Kudláč** - autor projektu

@@ -9,6 +9,7 @@
 \usepackage{graphics}
 \usepackage{picture}
 \usepackage{listings}
+\usepackage{float}
 
 \begin{document}
 \begin{titlepage}
@@ -35,10 +36,13 @@
 \pagebreak
 
 \section{Úvod}
-Prohlašuji, že jsem tuto semestrální práci vypracoval samostatně, uvedl jsem všechny literární prameny a publikace, ze kterých jsem čerpal.
-Dokumentace, uživatelská příručka a vestavěná nápověda je psána v češtině. Programová dokumentace je stejně jako samotný kód psána v angličtině a není součástí odevzdávané dokumentace.
+Prohlašuji, že jsem tuto semestrální práci vypracoval samostatně. Dokumentace, uživatelská příručka a vestavěná nápověda je psána v češtině. Programová dokumentace je stejně jako samotný kód psána v angličtině a není součástí odevzdané dokumentace.
+
+Cílem projektu bylo navrhnout vlastní aplikační protokol pro přenos souborů a naprogramovat klientskou a serverovou aplikaci využívající tento protokol.
 
 \section{Aplikační protokol}
+Aplikační protokol předpokládá spolehlivou komunikaci (TCP), správnost přenosu již nekontroluje.
+
 Poté, co klient naváže se serverem spojení, zašle klient serveru požadavek v jednom ze dvou následujících tvarů:
 \begin{itemize}
 	\item \texttt{\textbf{SEND <filename>}} -- soubor filename bude nahrán na server (klient->server)
@@ -53,15 +57,22 @@ Zpráva obsahuje \textbf{klíčové slovo} \texttt{SEND} nebo \texttt{RECV}, \te
 Odpovědi jsou inspirované stavovými kódy aplikačního protokolu HTTP. Jakákoliv jiná odpověď než \texttt{200 OK} je považována za chybu a k přenosu nedojde. Chybu je vhodné uživateli vypsat.
 
 Pokud server vrátí kód 200, může být zahájen přenos. Od této chvíle je dohodnuto, která strana bude příjemcem a která odesílatelem, komunikace se stává jednosměrnou. Odesílatel odesílá data v binární podobě, příjemce data pouze přijímá. Jakmile odesílatel odešle všechna data, ukončí spojení.
+\begin{figure}[H]
+	\centering
+	\scalebox{0.5}{
+		\includegraphics{IPK1-FSM.eps}
+	}
+	\caption{Konečný automat aplikačního protokolu. Vlevo stahování ze serveru, vpravo nahrávání na server.}
+	\label{fsm}
+\end{figure}
 
 \section{Programové řešení}
-Výsledný program je implementovaný v jazyce C++ dle standardu \textit{C++11} (ISO/IEC 14882:2011) a není zpětně kompatibilní s jazykem C, předpokládají se pouze adresy IPv4.
-Program je členěn do tří souborů:
-\begin{itemize}
-\item ipk-client.cpp --
-\item ipk-server.cpp --
-\item ipk-shared.cpp --
-\end{itemize}
+Výsledný program je implementovaný v jazyce C++ dle standardu \textit{C++11} a není zpětně kompatibilní s jazykem C, předpokládají se pouze adresy IPv4.
+Zdrojové kódy jsou členěny do tří souborů: \texttt{ipk-client.cpp}, \texttt{ipk-server.cpp} obsahující zdrovové kódy a \texttt{ipk-shared.cpp} obsahující společné vlastnosti -- závislosti ipk-client a ipk-sever, makra definující konstanty, používaný jmenný prostor.
+
+Server zvládá vyřizovat souběžně více požadavků. Pro každý příchozí požadavek vytvoří hlavní řídicí proces nový proces, který je zodpovědný za zpracování požadavku. Hlavní proces samotné požadavky nezpracovává. Pokud uživatel server ukončí signálem \textit{SIGINT}, dojde k ukončení hlavního procesu, který přijímá nové požadavky, procesy s rozpracovanými požadavky ukončeny nejsou, nechají se, aby přenos dokončili.
+
+Cílový i zdrojový adresář musí existovat. V případě, že neexistuje, končí program chybou, program adresáře nevytváří.
 
 \section{Uživatelská příručka}
 IPK: projekt č. 1 -- klient-server pro jednoduchý přenos souborů. Verze 0.3 (5.3.2018).
@@ -119,5 +130,7 @@ Při použití čísla portu menší než 1024 mohou být pro spuštění vyžad
 	\item 5 -- chyba komunikace (klient zaslal neplatný požadavek)
 \end{itemize}
 \section{Závěr}
+Program byl testován na referenčním virtuálním stroji pro předmět ISA, na serveru Merlin i Eva. Kromě nevytváření složek na straně příjemce není znám žádný problém. Aplikační protokol je jednoduchý, efektivní, ale význam zpráv je i přesto zřejmý a pro člověka čitelný.
+Jedná se o můj první program využívající síťové komunikace, takže jsem si osvojil mnoho nových znalostí. Projekt byl náročný, ale zajímavý.
 
 \end{document}
