@@ -1,0 +1,123 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[czech]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[left=2cm,top=3cm,text={17cm, 24cm}]{geometry}
+\usepackage{times}
+\author{Vladan Kudláč}
+
+\usepackage{graphics}
+\usepackage{picture}
+\usepackage{listings}
+
+\begin{document}
+\begin{titlepage}
+\begin{center}
+	\textsc{
+		{\Huge Vysoké učení technické v~Brně} \\
+		\medskip
+		{\huge Fakulta informačních technologií} \\
+	}
+	\vspace{\stretch{0.1}}
+	\includegraphics{logoFIT.eps}
+	\vspace{\stretch{0.282}}
+	
+	{\LARGE Počítačové komunikace a sítě\,--\,1. projekt} \\
+	\medskip
+	{\Huge Klient-server pro jednoduchý přenos souborů}
+	\vspace{\stretch{0.618}}
+	
+	{\Large 5. března 2018 \hfill Vladan Kudláč}
+\end{center}
+\end{titlepage}
+
+\tableofcontents
+\pagebreak
+
+\section{Úvod}
+Prohlašuji, že jsem tuto semestrální práci vypracoval samostatně, uvedl jsem všechny literární prameny a publikace, ze kterých jsem čerpal.
+Dokumentace, uživatelská příručka a vestavěná nápověda je psána v češtině. Programová dokumentace je stejně jako samotný kód psána v angličtině a není součástí odevzdávané dokumentace.
+
+\section{Aplikační protokol}
+Poté, co klient naváže se serverem spojení, zašle klient serveru požadavek v jednom ze dvou následujících tvarů:
+\begin{itemize}
+	\item \texttt{\textbf{SEND <filename>}} -- soubor filename bude nahrán na server (klient->server)
+	\item \texttt{\textbf{RECV <filename>}} -- soubor filename bude stažen ze serveru (server->klient)
+\end{itemize}
+Zpráva obsahuje \textbf{klíčové slovo} \texttt{SEND} nebo \texttt{RECV}, \textbf{mezeru} (ASCII kód 32) a následuje \textbf{posloupnost libovolných znaků} určující název souboru. Server klientu odpoví jedním ze stavových kódů:
+\begin{itemize}
+	\item \texttt{\textbf{200 OK}} -- vše v pořádku, přenos může začít
+	\item \texttt{\textbf{403 FILE\_ERROR}} -- klient žádá o práci se souborem, který nelze otevřít
+	\item \texttt{\textbf{400 BAD\_REQUEST}} -- klient nesplnil předepsaný tvar požadavku
+\end{itemize}
+Odpovědi jsou inspirované stavovými kódy aplikačního protokolu HTTP. Jakákoliv jiná odpověď než \texttt{200 OK} je považována za chybu a k přenosu nedojde. Chybu je vhodné uživateli vypsat.
+
+Pokud server vrátí kód 200, může být zahájen přenos. Od této chvíle je dohodnuto, která strana bude příjemcem a která odesílatelem, komunikace se stává jednosměrnou. Odesílatel odesílá data v binární podobě, příjemce data pouze přijímá. Jakmile odesílatel odešle všechna data, ukončí spojení.
+
+\section{Programové řešení}
+Výsledný program je implementovaný v jazyce C++ dle standardu \textit{C++11} (ISO/IEC 14882:2011) a není zpětně kompatibilní s jazykem C, předpokládají se pouze adresy IPv4.
+Program je členěn do tří souborů:
+\begin{itemize}
+\item ipk-client.cpp --
+\item ipk-server.cpp --
+\item ipk-shared.cpp --
+\end{itemize}
+
+\section{Uživatelská příručka}
+IPK: projekt č. 1 -- klient-server pro jednoduchý přenos souborů. Verze 0.3 (5.3.2018).
+\subsection{Požadavky}
+\subsubsection*{Překladač}
+Program lze přeložit v překladači podporující standard \textit{C++11}. Doporučuje se překladač \textbf{\textit{gcc} verze 4.8.4 a novější}. Pro jiné překladače a starší verze nebyl program testován.
+\subsubsection*{Knihovny potřebné k překladu}
+\begin{itemize}
+	\item iostream
+	\item fstream
+	\item unistd.h
+	\item cstring
+	\item sys/types.h
+	\item sys/socket.h
+	\item netinet/in.h
+	\item netdb.h
+\end{itemize}
+
+\subsection{Překlad}
+Překlad lze provést programem \textit{make}. Pro přeložení serveru i klienta použijte příkaz \textbf{\texttt{make all}} v adresáři s projektem. Pokud potřebujete provést překlad klienta nebo serveru jednotlivě, lze použít příkaz \texttt{make ipk-client}, případně \texttt{make server-ipk}.
+Pokud není možné použít program \textit{make}, lze programy přeložit následujícími příkazy:
+\begin{lstlisting}
+g++ -std=c++11 ipk-client.cpp -o ipk-client
+g++ -std=c++11 ipk-server.cpp -o ipk-server
+\end{lstlisting}
+
+\subsection{Spuštění}
+\subsubsection*{ipk-client}
+\begin{lstlisting}
+./ipk-client -h host -p port [-r|-w] soubor
+\end{lstlisting}
+\begin{itemize}
+	\item \texttt{-h <host>} -- (IP adresa nebo fully-qualified DNS name) identifikace serveru jakožto koncového bodu komunikace klienta
+	\item \texttt{-p <port>} -- cílové číslo portu v intervalu 0-65535
+	\item \texttt{-r <soubor>} -- klient stáhne soubor ze serveru
+	\item \texttt{-w <soubor>} -- klient nahraje soubor na server
+\end{itemize}
+
+\subsubsection*{ipk-server}
+\begin{lstlisting}
+./ipk-server -p <port>
+\end{lstlisting}
+\begin{itemize}
+	\item \texttt{-p <port>} -- číslo portu v intervalu <0;65535>, na kterém server naslouchá
+\end{itemize}
+Při použití čísla portu menší než 1024 mohou být pro spuštění vyžadována administrátorská oprávnění. Server se ukončuje signálem \textit{SIGINT} (Ctrl+C).
+
+\subsection{Chybové kódy}
+\begin{itemize}
+	\item 0 -- program skončil v pořádku
+	\item 1 -- chyba při zpracování argumentu
+	\item 2 -- chyba síťového rozhraní (např: nelze vytvořit socket, přiřadit port, vytvořit spojení)
+	\item 3 -- chyba práce se soubory
+	\item 4 -- systémová chyba (selhal příkaz fork) -- pouze u ipk-server
+	\item 5 -- chyba komunikace (klient zaslal neplatný požadavek)
+\end{itemize}
+\section{Závěr}
+
+\end{document}
