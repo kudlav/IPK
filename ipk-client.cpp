@@ -2,7 +2,7 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
- * Version: 0.2
+ * Version: 0.3
  */
 
 #include "ipk-shared.cpp"
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 
 	/* Confirmation from server */
 	data.clear();
-	data.resize(1024);
+	data.resize(DATA_SIZE);
 	recv(client_sock, &data[0], data.size(), 0);
 	if (data.find("200 OK") == string::npos) {
 		cerr << "CHYBA: server odpovedel chybou: " << data;
@@ -175,26 +175,21 @@ int main(int argc, char *argv[])
 	/* File transfer */
 	int loaded;
 	data.clear();
-	data.resize(1024);
+	data.resize(DATA_SIZE);
 	if (!path_out.empty()) {
 		while ((loaded = read(client_sock, &data[0], data.size())) > 0) {
-			if (loaded < 1024) {
+			if (loaded < DATA_SIZE) {
 				data.resize((unsigned int) loaded);
 			}
 			file << data;
 			data.clear();
-			data.resize(1024);
+			data.resize(DATA_SIZE);
 		}
 	}
 	else {
 		do {
 			file.read(&data[0], data.size());
-			if ((loaded = file.gcount()) < 1024) {
-				data.resize((unsigned int) loaded);
-			}
-			write(client_sock, data.c_str(), data.size());
-			data.clear();
-			data.resize(1024);
+			write(client_sock, data.c_str(), (unsigned int) file.gcount());
 		}
 		while (!file.eof());
 	}

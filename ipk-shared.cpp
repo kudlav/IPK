@@ -2,7 +2,7 @@
  * Project: IPK - client/server
  * Author: Vladan Kudlac
  * Created: 5.3.2018
- * Version: 0.2
+ * Version: 0.3
  */
 
 /* Error codes: */
@@ -11,6 +11,9 @@
 #define EXIT_IOE 3 // I/O error
 #define EXIT_SYS 4 // system error (fork)
 #define EXIT_COM 5 // communication error (invalid request / error response)
+
+/* Constants */
+#define DATA_SIZE 1024 // max size of one I/O operation
 
 /* Requirements */
 #include <iostream> // IO operations
