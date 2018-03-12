@@ -26,9 +26,9 @@ void printHelp()
 			"Navratove kody:\n"
 			"  0    ok\n"
 			"  1    chyba pri zpracovani argumentu\n"
-			"  2    chyba sitoveho rozhranni (např: nelze vytvorit socket, priradit port, vytvorit spojeni)\n"
+			"  2    chyba sitoveho rozhranni (napr: nelze vytvorit socket, priradit port, vytvorit spojeni)\n"
 			"  3    chyba prace se soubory\n"
-			"  5    chyba komunikace (server odpovedel chybou)"
+			"  5    chyba komunikace (server odpovedel chybou)\n"
 	;
 	exit(EXIT_ARG);
 }

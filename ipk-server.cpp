@@ -23,7 +23,7 @@ void printHelp()
 			"  2    chyba sitoveho rozhranni (např: nelze vytvorit socket, priradit port, vytvorit spojeni)\n"
 			"  3    chyba prace se soubory\n"
 			"  4    systemova chyba (selhal prikaz fork)\n"
-			"  5    chyba komunikace (klient zaslal neplatny pozadavek)"
+			"  5    chyba komunikace (klient zaslal neplatny pozadavek)\n"
 	;
 	exit(EXIT_ARG);
 }
